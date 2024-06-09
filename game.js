@@ -257,7 +257,7 @@ function collectCoins() {
     coins.forEach((coin, index) => {
         if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
-            score += 10;
+            score += 50;
 
             if (score % 100 === 0) {
                 coinInvincible = true;
