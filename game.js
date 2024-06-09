@@ -261,7 +261,7 @@ function collectCoins() {
 
             if (score % 100 === 0) {
                 coinInvincible = true;
-                coinInvincibleTime = 180; //
+                coinInvincibleTime = 240; //
             }
         }
     });
