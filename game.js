@@ -1,26 +1,41 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+function resizeCanvas() {
+    const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
+    canvas.style.transformOrigin = '0 0'; // Set the transform origin to top left
+    canvas.style.transform = `scale(${scale})`; // Scale the canvas
+    canvas.style.width = `${canvas.width * scale}px`;
+    canvas.style.height = `${canvas.height * scale}px`;
+}
+
+function detectMobile() {
+    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+if (detectMobile()) {
+    resizeCanvas();
+}
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 const stumpSprite = document.getElementById('stumpSprite');
 const gameOverSprite = document.getElementById('gameOverSprite');
 const shvabraSprite = document.getElementById('shvabraSprite');
-
 const jumpingSprite = document.getElementById('jumpingSprite');
-jumpingSprite.onload = () => console.log("Jumping sprite loaded");
-
-stumpSprite.onload = () => console.log("Stump sprite loaded");
-gameOverSprite.onload = () => console.log("Game Over sprite loaded");
-shvabraSprite.onload = () => console.log("Shvabra sprite loaded");
+const platformSprite = document.getElementById('platformSprite');
+const characterSprite = document.getElementById('characterSprite');
+const coinSprite = document.getElementById('coinSprite');
+const enemySprite = document.getElementById('enemySprite');
+const decorationSprite = document.getElementById('decorationSprite');
+const backgroundMusic = document.getElementById('backgroundMusic');
+const jumpSound = document.getElementById('jumpSound');
+const collisionSound = document.getElementById('collisionSound');
+const healthSprite = document.getElementById('healthSprite');
+const expSprite = document.getElementById('expSprite');
 
 let tripleJump = false; // Флаг тройного прыжка
-
-const platformSprite = document.getElementById('platformSprite');
-platformSprite.onload = () => console.log("Platform sprite loaded");
-
-
 const gravity = 0.4;  // Гравитация для персонажа и врагов
 let gameSpeed = 4;   // Скорость игры, увеличена для большей динамики
 let score = 0;       // Текущий счет
@@ -33,20 +48,9 @@ let invincible = false; // Флаг неуязвимости персонажа 
 let invincibleTime = 0; // Время неуязвимости
 let coinInvincible = false; // Флаг неуязвимости после сбора монет
 let coinInvincibleTime = 0; // Время неуязвимости после сбора монет
-
 let doubleJump = false; // Флаг двойного прыжка
 let gameOver = false;   // Флаг окончания игры
-
-const characterSprite = document.getElementById('characterSprite');
-const coinSprite = document.getElementById('coinSprite');
-const enemySprite = document.getElementById('enemySprite');
-const decorationSprite = document.getElementById('decorationSprite');
-
-const backgroundMusic = document.getElementById('backgroundMusic');
-const jumpSound = document.getElementById('jumpSound');
-const collisionSound = document.getElementById('collisionSound');
-
-backgroundMusic.play();
+let fallingThroughPlatform = false; // Флаг для отслеживания падения через платформу
 
 const character = {
     x: 50,
@@ -69,11 +73,6 @@ const enemies = [];   // Массив для врагов
 const projectiles = []; // Массив для снарядов
 const floors = [];    // Массив для пола
 
-let fallingThroughPlatform = false; // Флаг для отслеживания падения через платформу
-
-/**
- * Функция для сброса игры до начального состояния
- */
 function resetGame() {
     character.x = 50;
     character.y = canvas.height - 150;
@@ -105,9 +104,6 @@ function resetGame() {
     gameLoop();
 }
 
-/**
- * Функция для отрисовки персонажа
- */
 let facingLeft = false; // Отслеживание направления, в котором смотрит персонаж
 
 function drawCharacter() {
@@ -152,45 +148,30 @@ function drawCharacter() {
     ctx.filter = 'none'; // Сброс фильтра
 }
 
-/**
- * Функция для отрисовки шипов (препятствий)
- */
 function drawObstacles() {
     obstacles.forEach(obstacle => {
         ctx.drawImage(shvabraSprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     });
 }
 
-/**
- * Функция для отрисовки платформ
- */
 function drawPlatforms() {
     platforms.forEach(platform => {
         ctx.drawImage(platformSprite, platform.x, platform.y, platform.width, platform.height);
     });
 }
 
-/**
- * Функция для отрисовки монет
- */
 function drawCoins() {
     coins.forEach(coin => {
         ctx.drawImage(coinSprite, coin.x - coin.radius, coin.y - coin.radius + coinOffset, coin.radius * 2.5, coin.radius * 2.5); // увеличенные монеты
     });
 }
 
-/**
- * Функция для отрисовки врагов
- */
 function drawEnemies() {
     enemies.forEach(enemy => {
         ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
     });
 }
 
-/**
- * Функция для отрисовки снарядов
- */
 function drawProjectiles() {
     ctx.fillStyle = 'blue';
     projectiles.forEach(projectile => {
@@ -200,9 +181,6 @@ function drawProjectiles() {
     });
 }
 
-/**
- * Функция для отрисовки пола
- */
 function drawFloors() {
     ctx.fillStyle = '#D2B48C'; // Цвет, соответствующий RGB (72, 97, 34)
     floors.forEach(floor => {
@@ -210,9 +188,6 @@ function drawFloors() {
     });
 }
 
-/**
- * Функция для отрисовки фона
- */
 function drawBackground() {
     const bgWidth = canvas.width * 1.2; // увеличенный фон для уменьшения швов
     ctx.drawImage(decorationSprite, -backgroundOffset, 0, bgWidth, canvas.height);
@@ -220,9 +195,6 @@ function drawBackground() {
     ctx.drawImage(decorationSprite, 2 * bgWidth - backgroundOffset, 0, bgWidth, canvas.height);
 }
 
-/**
- * Функция для обновления состояния персонажа
- */
 function updateCharacter() {
     character.dy += gravity;
     character.y += character.dy;
@@ -274,9 +246,6 @@ function updateCharacter() {
     }
 }
 
-/**
- * Функция для проверки коллизий
- */
 function isColliding(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width &&
            rect1.x + rect1.width > rect2.x &&
@@ -284,16 +253,12 @@ function isColliding(rect1, rect2) {
            rect1.y + rect1.height > rect2.y;
 }
 
-/**
- * Функция для сбора монет
- */
 function collectCoins() {
     coins.forEach((coin, index) => {
         if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
             score += 10;
 
-            // Добавление неуязвимости на 4 секунды при сборе 100 монет
             if (score % 100 === 0) {
                 coinInvincible = true;
                 coinInvincibleTime = 180; //
@@ -302,9 +267,6 @@ function collectCoins() {
     });
 }
 
-/**
- * Функция для обработки коллизий с врагами
- */
 function hitEnemies() {
     enemies.forEach((enemy, index) => {
         if (isColliding(character, enemy)) {
@@ -313,7 +275,6 @@ function hitEnemies() {
                 score += 20;
                 character.dy = -10; // Make character jump up after hitting an enemy
 
-                // Добавление жизни при убийстве врага
                 if (lives < 10) { // Проверка, чтобы жизни не превышали максимальное значение
                     lives += 1;
                 }
@@ -331,12 +292,6 @@ function hitEnemies() {
     });
 }
 
-/**
- * Функция для обработки неуязвимости персонажа после столкновения
- */
- /**
- * Функция для обработки неуязвимости персонажа после столкновения
- */
 function handleInvincibility() {
     if (invincible) {
         invincibleTime -= 1;
@@ -353,16 +308,10 @@ function handleInvincibility() {
     }
 }
 
-/**
- * Функция для очистки канваса
- */
 function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-/**
- * Функция для генерации препятствий (шипов)
- */
 function generateObstacles() {
     const obstacleInterval = 4500; // Интервал генерации препятствий в миллисекундах
     setInterval(() => {
@@ -379,27 +328,18 @@ function generateObstacles() {
     }, obstacleInterval);
 }
 
-/**
- * Функция для отрисовки HUD
- */
 function drawHUD() {
-    // Отрисовка жизней в виде сердечек
     for (let i = 0; i < lives; i++) {
         ctx.drawImage(healthSprite, 40 + i * 40, 20, 45, 40);
     }
 
-    // Отрисовка изображения "EXP"
     ctx.drawImage(expSprite, 15, 60, 170, 60); // Увеличен размер изображения
 
-    // Отрисовка текущего счета рядом с "EXP"
     ctx.fillStyle = 'orange'; // Изменен цвет на оранжевый
     ctx.font = 'bold 35px Arial'; // Увеличен размер и сделан жирным
     ctx.fillText(score, 155, 103);
 }
 
-/**
- * Функция для генерации платформ
- */
 function generatePlatforms() {
     function createPlatform() {
         const platform = {
@@ -411,18 +351,13 @@ function generatePlatforms() {
         };
         platforms.push(platform);
 
-        // Устанавливаем случайный интервал для следующей платформы
         const nextInterval = Math.random() * 2000 + 9000; // от 3 до 8 секунд
         setTimeout(createPlatform, nextInterval);
     }
 
-    // Начинаем генерацию с первого вызова
     createPlatform();
 }
 
-/**
- * Функция для генерации монет
- */
 function generateCoins() {
     for (let i = 0; i < 4; i++) { // уменьшено количество монет
         const coin = {
@@ -434,9 +369,6 @@ function generateCoins() {
     }
 }
 
-/**
- * Функция для генерации врагов
- */
 function generateEnemies() {
     for (let i = 0; i < 17; i++) {
         const enemy = {
@@ -449,9 +381,6 @@ function generateEnemies() {
     }
 }
 
-/**
- * Функция для генерации пола
- */
 function generateFloors() {
     for (let i = 0; i < 20; i++) { // увеличено количество пола для бесконечности
         const floor = {
@@ -464,9 +393,6 @@ function generateFloors() {
     }
 }
 
-/**
- * Функция для генерации снарядов, которые враги будут бросать
- */
 function generateProjectiles() {
     enemies.forEach(enemy => {
         if (Math.random() < 0.005) { // уменьшенная вероятность генерации снаряда
@@ -481,9 +407,6 @@ function generateProjectiles() {
     });
 }
 
-/**
- * Функция для обновления состояния монет (анимация)
- */
 function updateCoins() {
     if (coinOffset > 20 || coinOffset < -20) {
         coinDirection *= -1;
@@ -491,9 +414,6 @@ function updateCoins() {
     coinOffset += coinDirection * 0.5;
 }
 
-/**
- * Функция для обновления состояния врагов (движение и прыжки)
- */
 function updateEnemies() {
     enemies.forEach(enemy => {
         if (Math.random() < 0.02) {
@@ -512,9 +432,6 @@ function updateEnemies() {
     });
 }
 
-/**
- * Функция для проверки коллизий снаряда с виртуальным коллайдером персонажа
- */
 function isCollidingWithVirtualCollider(projectile, rect) {
     const collider = {
         x: rect.x + 10, // Смещение коллайдера
@@ -539,9 +456,6 @@ function isCollidingWithVirtualCollider(projectile, rect) {
     return (dx * dx + dy * dy <= (projectile.radius * projectile.radius));
 }
 
-/**
- * Функция для обновления состояния снарядов (движение и удаление вне экрана)
- */
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
@@ -562,9 +476,6 @@ function updateProjectiles() {
     });
 }
 
-/**
- * Функция для проверки коллизий снаряда с персонажем
- */
 function isCollidingWithCharacter(projectile, character) {
     const projectileCollider = {
         x: projectile.x - projectile.radius,
@@ -583,9 +494,6 @@ function isCollidingWithCharacter(projectile, character) {
     return isRectColliding(projectileCollider, characterCollider);
 }
 
-/**
- * Функция для проверки коллизий двух прямоугольников
- */
 function isRectColliding(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width &&
            rect1.x + rect1.width > rect2.x &&
