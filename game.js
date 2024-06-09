@@ -51,8 +51,8 @@ backgroundMusic.play();
 const character = {
     x: 50,
     y: canvas.height - 150,
-    width: 100, // увеличенный размер персонажа
-    height: 135, // увеличенный размер персонажа
+    width: 90, // увеличенный размер персонажа
+    height: 120, // увеличенный размер персонажа
     dx: 0,
     dy: 0,
     speed: 8, // увеличенная скорость персонажа для большей динамики
@@ -394,8 +394,8 @@ function generatePlatforms() {
         const platform = {
             x: canvas.width,
             y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460, // Некоторые платформы будут выше
-            width: 140,
-            height: 45,
+            width: 130,
+            height: 34,
             speed: gameSpeed
         };
         platforms.push(platform);
