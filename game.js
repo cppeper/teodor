@@ -51,7 +51,7 @@ backgroundMusic.play();
 const character = {
     x: 50,
     y: canvas.height - 150,
-    width: 90, // увеличенный размер персонажа
+    width: 95, // увеличенный размер персонажа
     height: 120, // увеличенный размер персонажа
     dx: 0,
     dy: 0,
