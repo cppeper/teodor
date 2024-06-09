@@ -36,7 +36,7 @@ const healthSprite = document.getElementById('healthSprite');
 const expSprite = document.getElementById('expSprite');
 
 let tripleJump = false; // Флаг тройного прыжка
-const gravity = 0.4;  // Гравитация для персонажа и врагов
+const gravity = 0.5;  // Гравитация для персонажа и врагов
 let gameSpeed = 4;   // Скорость игры, увеличена для большей динамики
 let score = 0;       // Текущий счет
 let backgroundOffset = 0;  // Смещение фона для эффекта движения
@@ -59,7 +59,7 @@ const character = {
     height: 120, // увеличенный размер персонажа
     dx: 0,
     dy: 0,
-    speed: 8, // увеличенная скорость персонажа для большей динамики
+    speed: 10, // увеличенная скорость персонажа для большей динамики
     jumping: false,
     isAlive: true,
     jumpCount: 0, // Добавлено для отслеживания количества прыжков
@@ -557,7 +557,6 @@ function gameLoop() {
     if (Math.random() < 0.01) generateEnemies();
     generateProjectiles();
 
-    // Отрисовка HUD
     drawHUD();
 
     if (character.isAlive) {
