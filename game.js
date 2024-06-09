@@ -395,7 +395,7 @@ function generatePlatforms() {
             x: canvas.width,
             y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460, // Некоторые платформы будут выше
             width: 140,
-            height: 65,
+            height: 45,
             speed: gameSpeed
         };
         platforms.push(platform);
