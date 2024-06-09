@@ -284,12 +284,12 @@ function collectCoins() {
     coins.forEach((coin, index) => {
         if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
-            score += 5;
+            score += 10;
 
             // Добавление неуязвимости на 4 секунды при сборе 100 монет
             if (score % 100 === 0) {
                 coinInvincible = true;
-                coinInvincibleTime = 120; // 4 секунды (240 кадров)
+                coinInvincibleTime = 180; //
             }
         }
     });
