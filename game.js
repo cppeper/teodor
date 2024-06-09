@@ -394,14 +394,14 @@ function generatePlatforms() {
         const platform = {
             x: canvas.width,
             y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460, // Некоторые платформы будут выше
-            width: 130,
-            height: 34,
+            width: 100,
+            height: 35,
             speed: gameSpeed
         };
         platforms.push(platform);
 
         // Устанавливаем случайный интервал для следующей платформы
-        const nextInterval = Math.random() * 5000 + 9000; // от 3 до 8 секунд
+        const nextInterval = Math.random() * 2000 + 9000; // от 3 до 8 секунд
         setTimeout(createPlatform, nextInterval);
     }
 
