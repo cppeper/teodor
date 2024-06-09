@@ -6,12 +6,22 @@ canvas.height = window.innerHeight;
 
 const stumpSprite = document.getElementById('stumpSprite');
 const gameOverSprite = document.getElementById('gameOverSprite');
+const shvabraSprite = document.getElementById('shvabraSprite');
+
+const jumpingSprite = document.getElementById('jumpingSprite');
+jumpingSprite.onload = () => console.log("Jumping sprite loaded");
 
 stumpSprite.onload = () => console.log("Stump sprite loaded");
 gameOverSprite.onload = () => console.log("Game Over sprite loaded");
+shvabraSprite.onload = () => console.log("Shvabra sprite loaded");
+
+let tripleJump = false; // Флаг тройного прыжка
+
+const platformSprite = document.getElementById('platformSprite');
+platformSprite.onload = () => console.log("Platform sprite loaded");
 
 
-const gravity = 0.5;  // Гравитация для персонажа и врагов
+const gravity = 0.4;  // Гравитация для персонажа и врагов
 let gameSpeed = 4;   // Скорость игры, увеличена для большей динамики
 let score = 0;       // Текущий счет
 let backgroundOffset = 0;  // Смещение фона для эффекта движения
@@ -21,6 +31,8 @@ let enemyDirection = 1; // Направление движения врагов
 let lives = 3;       // Количество жизней персонажа
 let invincible = false; // Флаг неуязвимости персонажа после столкновения
 let invincibleTime = 0; // Время неуязвимости
+let coinInvincible = false; // Флаг неуязвимости после сбора монет
+let coinInvincibleTime = 0; // Время неуязвимости после сбора монет
 
 let doubleJump = false; // Флаг двойного прыжка
 let gameOver = false;   // Флаг окончания игры
@@ -39,13 +51,15 @@ backgroundMusic.play();
 const character = {
     x: 50,
     y: canvas.height - 150,
-    width: 100, // увеличенный размер персонажа
-    height: 100, // увеличенный размер персонажа
+    width: 115, // увеличенный размер персонажа
+    height: 155, // увеличенный размер персонажа
     dx: 0,
     dy: 0,
     speed: 8, // увеличенная скорость персонажа для большей динамики
     jumping: false,
-    isAlive: true
+    isAlive: true,
+    jumpCount: 0, // Добавлено для отслеживания количества прыжков
+    maxJumps: 3  // Максимальное количество прыжков (тройной прыжок)
 };
 
 const obstacles = []; // Массив для препятствий (шипы)
@@ -69,6 +83,8 @@ function resetGame() {
     lives = 3;
     invincible = false;
     invincibleTime = 0;
+    coinInvincible = false;
+    coinInvincibleTime = 0;
     obstacles.length = 0;
     platforms.length = 0;
     coins.length = 0;
@@ -77,6 +93,7 @@ function resetGame() {
     floors.length = 0;
     gameOver = false;
     doubleJump = false;
+    tripleJump = false;
     backgroundOffset = 0;
     generateObstacles();
     generatePlatforms();
@@ -89,23 +106,56 @@ function resetGame() {
 /**
  * Функция для отрисовки персонажа
  */
+let facingLeft = false; // Отслеживание направления, в котором смотрит персонаж
+
 function drawCharacter() {
-    ctx.drawImage(characterSprite, character.x, character.y, character.width, character.height);
+    ctx.save(); // Сохраните текущее состояние контекста
+
+    if (invincible) {
+        ctx.globalAlpha = 0.4; // Прозрачность при неуязвимости после коллизии
+    } else if (coinInvincible) {
+        ctx.globalAlpha = 0.8;
+        ctx.filter = 'brightness(1.8)'; // Желтый цвет при неуязвимости после сбора монет
+    } else {
+        ctx.globalAlpha = 1.0;
+        ctx.filter = 'none';
+    }
+
+    // Определение, нужно ли менять направление персонажа
+    if (character.dx < 0 && !facingLeft) {
+        facingLeft = true;
+    } else if (character.dx > 0 && facingLeft) {
+        facingLeft = false;
+    }
+
+    // Отображение персонажа с учетом направления
+    if (facingLeft) {
+        ctx.scale(-1, 1); // Отразите по горизонтали
+        if (character.jumping || character.dy !== 0) {
+            ctx.drawImage(jumpingSprite, -character.x - character.width, character.y, -character.width, character.height);
+        } else {
+            ctx.drawImage(characterSprite, -character.x - character.width, character.y, -character.width, character.height);
+        }
+    } else {
+        ctx.scale(1, 1); // Нормальное отображение
+        if (character.jumping || character.dy !== 0) {
+            ctx.drawImage(jumpingSprite, character.x, character.y, character.width, character.height);
+        } else {
+            ctx.drawImage(characterSprite, character.x, character.y, character.width, character.height);
+        }
+    }
+
+    ctx.restore(); // Восстановите состояние контекста
+    ctx.globalAlpha = 1.0; // Сброс прозрачности
+    ctx.filter = 'none'; // Сброс фильтра
 }
 
 /**
  * Функция для отрисовки шипов (препятствий)
  */
- 
 function drawObstacles() {
-    ctx.fillStyle = 'red';
     obstacles.forEach(obstacle => {
-        ctx.beginPath();
-        ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
-        ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
-        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
-        ctx.closePath();
-        ctx.fill();
+        ctx.drawImage(shvabraSprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     });
 }
 
@@ -113,9 +163,8 @@ function drawObstacles() {
  * Функция для отрисовки платформ
  */
 function drawPlatforms() {
-    ctx.fillStyle = 'gray';
     platforms.forEach(platform => {
-        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+        ctx.drawImage(platformSprite, platform.x, platform.y, platform.width, platform.height);
     });
 }
 
@@ -153,7 +202,7 @@ function drawProjectiles() {
  * Функция для отрисовки пола
  */
 function drawFloors() {
-    ctx.fillStyle = 'green';
+    ctx.fillStyle = '#D2B48C'; // Цвет, соответствующий RGB (72, 97, 34)
     floors.forEach(floor => {
         ctx.fillRect(floor.x, floor.y, floor.width, floor.height);
     });
@@ -181,7 +230,7 @@ function updateCharacter() {
         character.y = canvas.height - 50 - character.height;
         character.dy = 0;
         character.jumping = false;
-        doubleJump = false;
+        character.jumpCount = 0;  // Сброс счетчика прыжков
     }
 
     platforms.forEach(platform => {
@@ -192,12 +241,12 @@ function updateCharacter() {
             character.y = platform.y - character.height;
             character.dy = 0;
             character.jumping = false;
-            doubleJump = false;
+            character.jumpCount = 0;  // Сброс счетчика прыжков
         }
     });
 
     obstacles.forEach(obstacle => {
-        if (isColliding(character, obstacle) && !invincible) {
+        if (isColliding(character, obstacle) && !invincible && !coinInvincible) {
             playSound(collisionSound);
             lives -= 1;
             invincible = true;
@@ -217,6 +266,7 @@ function updateCharacter() {
     }
 }
 
+
 /**
  * Функция для проверки коллизий
  */
@@ -234,7 +284,13 @@ function collectCoins() {
     coins.forEach((coin, index) => {
         if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
-            score += 10;
+            score += 5;
+
+            // Добавление неуязвимости на 4 секунды при сборе 100 монет
+            if (score % 100 === 0) {
+                coinInvincible = true;
+                coinInvincibleTime = 120; // 4 секунды (240 кадров)
+            }
         }
     });
 }
@@ -249,7 +305,12 @@ function hitEnemies() {
                 enemies.splice(index, 1);
                 score += 20;
                 character.dy = -10; // Make character jump up after hitting an enemy
-            } else if (!invincible) {
+
+                // Добавление жизни при убийстве врага
+                if (lives < 10) { // Проверка, чтобы жизни не превышали максимальное значение
+                    lives += 1;
+                }
+            } else if (!invincible && !coinInvincible) {
                 playSound(collisionSound);
                 lives -= 1;
                 invincible = true;
@@ -272,13 +333,13 @@ function handleInvincibility() {
         if (invincibleTime <= 0) {
             invincible = false;
         }
-        if (invincibleTime % 20 < 10) {
-            ctx.globalAlpha = 0.5; // Make character blink
-        } else {
-            ctx.globalAlpha = 1.0;
+    }
+
+    if (coinInvincible) {
+        coinInvincibleTime -= 1;
+        if (coinInvincibleTime <= 0) {
+            coinInvincible = false;
         }
-    } else {
-        ctx.globalAlpha = 1.0;
     }
 }
 
@@ -293,37 +354,66 @@ function clearCanvas() {
  * Функция для генерации препятствий (шипов)
  */
 function generateObstacles() {
-    for (let i = 0; i < 3; i++) {
-        const obstacle = {
-            x: canvas.width + i * 800, // уменьшенное количество шипов
-            y: canvas.height - 100,
-            width: 50,
-            height: 50
-        };
-        obstacles.push(obstacle);
-    }
+    const obstacleInterval = 4500; // Интервал генерации препятствий в миллисекундах
+    setInterval(() => {
+        if (Math.random() < 0.2) { // Уменьшена вероятность появления препятствий
+            const obstacle = {
+                x: canvas.width,
+                y: canvas.height - 120,
+                width: 110,
+                height: 140,
+                speed: gameSpeed
+            };
+            obstacles.push(obstacle);
+        }
+    }, obstacleInterval);
 }
 
+/**
+ * Функция для отрисовки HUD
+ */
+function drawHUD() {
+    // Отрисовка жизней в виде сердечек
+    for (let i = 0; i < lives; i++) {
+        ctx.drawImage(healthSprite, 40 + i * 40, 20, 45, 40);
+    }
+
+    // Отрисовка изображения "EXP"
+    ctx.drawImage(expSprite, 15, 60, 170, 60); // Увеличен размер изображения
+
+    // Отрисовка текущего счета рядом с "EXP"
+    ctx.fillStyle = 'orange'; // Изменен цвет на оранжевый
+    ctx.font = 'bold 35px Arial'; // Увеличен размер и сделан жирным
+    ctx.fillText(score, 155, 103);
+}
 /**
  * Функция для генерации платформ
  */
 function generatePlatforms() {
-    for (let i = 0; i < 3; i++) { // уменьшено количество платформ
+    function createPlatform() {
         const platform = {
-            x: canvas.width + i * 600,
-            y: canvas.height - 200,
-            width: 100,
-            height: 10
+            x: canvas.width,
+            y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460, // Некоторые платформы будут выше
+            width: 140,
+            height: 65,
+            speed: gameSpeed
         };
         platforms.push(platform);
+
+        // Устанавливаем случайный интервал для следующей платформы
+        const nextInterval = Math.random() * 5000 + 9000; // от 3 до 8 секунд
+        setTimeout(createPlatform, nextInterval);
     }
+
+    // Начинаем генерацию с первого вызова
+    createPlatform();
 }
 
 /**
  * Функция для генерации монет
  */
 function generateCoins() {
-    for (let i = 0; i < 5; i++) { // уменьшено количество монет
+    for (let i = 0; i < 4; i++) { // уменьшено количество монет
         const coin = {
             x: canvas.width + i * 400,
             y: canvas.height - 200,
@@ -337,9 +427,9 @@ function generateCoins() {
  * Функция для генерации врагов
  */
 function generateEnemies() {
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 17; i++) {
         const enemy = {
-            x: canvas.width + i * 300, // увеличенное количество врагов
+            x: canvas.width + i * 450, // увеличенное количество врагов
             y: canvas.height - 150,
             width: 100, // увеличенный размер врагов
             height: 100 // увеличенный размер врагов
@@ -395,8 +485,8 @@ function updateCoins() {
  */
 function updateEnemies() {
     enemies.forEach(enemy => {
-        if (Math.random() < 0.01) {
-            enemy.dy = -10;
+        if (Math.random() < 0.02) {
+            enemy.dy = -15;
         }
         enemy.dy += gravity;
         enemy.y += enemy.dy;
@@ -449,7 +539,7 @@ function updateProjectiles() {
         if (projectile.x + projectile.radius < 0) {
             projectiles.splice(index, 1);
         }
-        if (isCollidingWithCharacter(projectile, character) && !invincible) {
+        if (isCollidingWithCharacter(projectile, character) && !invincible && !coinInvincible) {
             playSound(collisionSound);
             lives -= 1;
             invincible = true;
@@ -539,8 +629,8 @@ function gameLoop() {
         projectile.x -= gameSpeed;
     });
 
-    backgroundOffset += gameSpeed / 2;
-    if (backgroundOffset >= canvas.width * 1.2) {
+    backgroundOffset += gameSpeed / 20;
+    if (backgroundOffset >= canvas.width * 1.3) {
         backgroundOffset = 0;
     }
 
@@ -550,10 +640,8 @@ function gameLoop() {
     if (Math.random() < 0.01) generateEnemies();
     generateProjectiles();
 
-    ctx.fillStyle = 'black';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Score: ${score}`, 10, 30);
-    ctx.fillText(`Lives: ${lives}`, 10, 60);
+    // Отрисовка HUD
+    drawHUD();
 
     if (character.isAlive) {
         requestAnimationFrame(gameLoop);
@@ -562,48 +650,31 @@ function gameLoop() {
     }
 }
 
-/**
- * Обработчик событий для управления персонажем
- */
 document.addEventListener('keydown', (e) => {
     if (e.key === 'a' || e.key === 'ф' || e.key === 'A' || e.key === 'Ф') {
         character.dx = -character.speed;
     } else if (e.key === 'd' || e.key === 'в' || e.key === 'D' || e.key === 'В') {
         character.dx = character.speed;
-    } else if (e.key === ' ' && !character.jumping) {
+    } else if (e.key === ' ' && character.jumpCount < character.maxJumps) {
         character.dy = -12; // уменьшенная сила прыжка
+        character.jumpCount++;
         character.jumping = true;
-        playSound(jumpSound);
-    } else if (e.key === ' ' && character.jumping && !doubleJump) {
-        character.dy = -12; // уменьшенная сила прыжка для двойного прыжка
-        doubleJump = true;
         playSound(jumpSound);
     } else if (e.key === ' ' && gameOver) {
         resetGame();
     }
 });
 
-document.addEventListener('keyup', (e) => {
-    if (e.key === 'a' || e.key === 'd' || e.key === 'ф' || e.key === 'в' || e.key === 'A' || e.key === 'D' || e.key === 'Ф' || e.key === 'В') {
-        character.dx = 0;
-    }
-});
 
-/**
- * Обработчик для сенсорного управления
- */
 canvas.addEventListener('touchstart', (e) => {
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
 
-    if (touchX > character.x && touchX < character.x + character.width && touchY > character.y && touchY < character.y + character.height) {
-        if (!character.jumping) {
+    if (touchY < character.y) {
+        if (character.jumpCount < character.maxJumps) {
             character.dy = -12; // уменьшенная сила прыжка
+            character.jumpCount++;
             character.jumping = true;
-            playSound(jumpSound);
-        } else if (character.jumping && !doubleJump) {
-            character.dy = -12; // уменьшенная сила прыжка для двойного прыжка
-            doubleJump = true;
             playSound(jumpSound);
         }
     } else if (touchX < character.x) {
