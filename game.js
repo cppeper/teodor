@@ -69,6 +69,8 @@ const enemies = [];   // Массив для врагов
 const projectiles = []; // Массив для снарядов
 const floors = [];    // Массив для пола
 
+let fallingThroughPlatform = false; // Флаг для отслеживания падения через платформу
+
 /**
  * Функция для сброса игры до начального состояния
  */
@@ -231,10 +233,11 @@ function updateCharacter() {
         character.dy = 0;
         character.jumping = false;
         character.jumpCount = 0;  // Сброс счетчика прыжков
+        fallingThroughPlatform = false; // Сброс флага при касании пола
     }
 
     platforms.forEach(platform => {
-        if (character.y + character.height > platform.y &&
+        if (!fallingThroughPlatform && character.dy >= 0 && character.y + character.height > platform.y &&
             character.y + character.height < platform.y + platform.height &&
             character.x + character.width > platform.x &&
             character.x < platform.x + platform.width) {
@@ -264,8 +267,12 @@ function updateCharacter() {
     if (character.x + character.width > canvas.width) {
         character.x = canvas.width - character.width;
     }
-}
 
+    // Сброс флага `fallingThroughPlatform`, если персонаж не падает
+    if (character.dy === 0) {
+        fallingThroughPlatform = false;
+    }
+}
 
 /**
  * Функция для проверки коллизий
@@ -294,7 +301,6 @@ function collectCoins() {
         }
     });
 }
-
 
 /**
  * Функция для обработки коллизий с врагами
@@ -326,6 +332,9 @@ function hitEnemies() {
 }
 
 /**
+ * Функция для обработки неуязвимости персонажа после столкновения
+ */
+ /**
  * Функция для обработки неуязвимости персонажа после столкновения
  */
 function handleInvincibility() {
@@ -387,6 +396,7 @@ function drawHUD() {
     ctx.font = 'bold 35px Arial'; // Увеличен размер и сделан жирным
     ctx.fillText(score, 155, 103);
 }
+
 /**
  * Функция для генерации платформ
  */
@@ -530,8 +540,6 @@ function isCollidingWithVirtualCollider(projectile, rect) {
 }
 
 /**
-/**
-/**
  * Функция для обновления состояния снарядов (движение и удаление вне экрана)
  */
 function updateProjectiles() {
@@ -663,15 +671,18 @@ document.addEventListener('keydown', (e) => {
         playSound(jumpSound);
     } else if (e.key === ' ' && gameOver) {
         resetGame();
+    } else if (e.key === 's' || e.key === 'ы' || e.key === 'S' || e.key === 'Ы') {
+        fallingThroughPlatform = true; // Устанавливаем флаг для падения через платформу
     }
 });
-
 
 canvas.addEventListener('touchstart', (e) => {
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
 
-    if (touchY < character.y) {
+    if (touchY > character.y + character.height) {
+        fallingThroughPlatform = true; // Устанавливаем флаг для падения через платформу при тапе вниз
+    } else if (touchY < character.y) {
         if (character.jumpCount < character.maxJumps) {
             character.dy = -12; // уменьшенная сила прыжка
             character.jumpCount++;
