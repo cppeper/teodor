@@ -431,11 +431,11 @@ function generateProjectiles() {
     });
 }
 
+let coinAnimationFrame = 0;
+
 function updateCoins() {
-    if (coinOffset > 20 || coinOffset < -20) {
-        coinDirection *= -1;
-    }
-    coinOffset += coinDirection * 0.5;
+    coinAnimationFrame += 0.1;
+    coinOffset = Math.sin(coinAnimationFrame) * 10; // Амплитуда колебаний 10 пикселей
 }
 
 function updateEnemies() {
