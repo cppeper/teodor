@@ -330,6 +330,7 @@ function clearCanvas() {
 }
 
 function generateObstacles() {
+    if (obstacles.length < 5 && Math.random() < 0.02) {
     const obstacleInterval = 4000;
     setInterval(() => {
         if (Math.random() < 0.2) {
@@ -342,7 +343,7 @@ function generateObstacles() {
             };
             obstacles.push(obstacle);
         }
-    }, obstacleInterval);
+    }, obstacleInterval) };
 }
 
 function drawHUD() {
