@@ -259,12 +259,11 @@ function updateCharacter() {
 }
 
 function isColliding(rect1, rect2) {
-    const characterCollider = {
-        x: rect1.x + 10,
-        y: rect1.y + 10,
-        width: rect1.width - 20,
-        height: rect1.height - 20
-    };
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+};
     return characterCollider.x < rect2.x + rect2.width &&
            characterCollider.x + characterCollider.width > rect2.x &&
            characterCollider.y < rect2.y + rect2.height &&
@@ -469,7 +468,6 @@ function drawEnemies() {
     });
     ctx.restore();
 
-    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
 }
 
 
