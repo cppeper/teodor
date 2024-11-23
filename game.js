@@ -8,9 +8,9 @@ function resizeCanvas() {
     } else {
         const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
         canvas.style.transformOrigin = '0 0';
-        canvas.style.transform = scale(${scale});
-        canvas.style.width = ${canvas.width * scale}px;
-        canvas.style.height = ${canvas.height * scale}px;
+        canvas.style.transform = `scale(${scale})`;
+        canvas.style.width = `${canvas.width * scale}px`;
+        canvas.style.height = `${canvas.height * scale}px`;
     }
 }
 
