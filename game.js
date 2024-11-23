@@ -1,8 +1,6 @@
-// Получаем доступ к холсту и контексту
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Функция для изменения размера холста
 function resizeCanvas() {
     if (detectMobile()) {
         canvas.width = window.innerWidth;
@@ -10,25 +8,33 @@ function resizeCanvas() {
     } else {
         const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
         canvas.style.transformOrigin = '0 0';
-        canvas.style.transform = `scale(${scale})`;
-        canvas.style.width = `${canvas.width * scale}px`;
-        canvas.style.height = `${canvas.height * scale}px`;
+        canvas.style.transform = scale(${scale});
+        canvas.style.width = ${canvas.width * scale}px;
+        canvas.style.height = ${canvas.height * scale}px;
     }
 }
 
-// Функция для определения мобильного устройства
 function detectMobile() {
     return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
-// Инициализация холста
+function updateGameSpeed() {
+    // Линейное увеличение скорости до максимума 4 раз
+    const maxMultiplier = 4;
+    const scoreFactor = 1000; // Параметр, определяющий, как быстро растет скорость
+    const multiplier = Math.min(1 + score / scoreFactor, maxMultiplier);
+    gameSpeed = 4 * multiplier;
+}
+
+
+
 if (detectMobile()) {
     resizeCanvas();
 }
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Загрузка изображений и звуков
 const stumpSprite = document.getElementById('stumpSprite');
 const gameOverSprite = document.getElementById('gameOverSprite');
 const shvabraSprite = document.getElementById('shvabraSprite');
@@ -38,30 +44,29 @@ const characterSprite = document.getElementById('characterSprite');
 const coinSprite = document.getElementById('coinSprite');
 const enemySprite = document.getElementById('enemySprite');
 const decorationSprite = document.getElementById('decorationSprite');
-const healthSprite = document.getElementById('healthSprite');
-const expSprite = document.getElementById('expSprite');
-
 const backgroundMusic = document.getElementById('backgroundMusic');
 const jumpSound = document.getElementById('jumpSound');
 const collisionSound = document.getElementById('collisionSound');
+const healthSprite = document.getElementById('healthSprite');
+const expSprite = document.getElementById('expSprite');
 
-// Глобальные переменные игры
+let tripleJump = false;
 const gravity = 0.5;
 let gameSpeed = 4;
 let score = 0;
 let backgroundOffset = 0;
 let coinOffset = 0;
-let coinAnimationFrame = 0;
+let coinDirection = 1;
 let lives = 3;
 let invincible = false;
 let invincibleTime = 0;
 let coinInvincible = false;
 let coinInvincibleTime = 0;
+let doubleJump = false;
 let gameOver = false;
 let fallingThroughPlatform = false;
 let cameraOffset = 0;
 
-// Объект персонажа
 const character = {
     x: 50,
     y: canvas.height - 150,
@@ -76,7 +81,6 @@ const character = {
     maxJumps: 3
 };
 
-// Массивы игровых объектов
 const obstacles = [];
 const platforms = [];
 const coins = [];
@@ -84,7 +88,6 @@ const enemies = [];
 const projectiles = [];
 const floors = [];
 
-// Функция сброса игры
 function resetGame() {
     character.x = 50;
     character.y = canvas.height - 150;
@@ -105,38 +108,19 @@ function resetGame() {
     projectiles.length = 0;
     floors.length = 0;
     gameOver = false;
+    doubleJump = false;
+    tripleJump = false;
     backgroundOffset = 0;
-    cameraOffset = 0;
-    generateFloors();
     generateObstacles();
     generatePlatforms();
     generateCoins();
     generateEnemies();
+    generateFloors();
     gameLoop();
 }
 
-// Создание холста для фона для оптимизации
-let backgroundCanvas = document.createElement('canvas');
-backgroundCanvas.width = canvas.width * 1.5; // Увеличенный фон для предотвращения мерцания
-backgroundCanvas.height = canvas.height;
-let backgroundCtx = backgroundCanvas.getContext('2d');
+let facingLeft = false;
 
-// Отрисовка статичного фона один раз
-function drawStaticBackground() {
-    backgroundCtx.drawImage(decorationSprite, 0, 0, backgroundCanvas.width, backgroundCanvas.height);
-}
-drawStaticBackground();
-
-// Функция отрисовки фона
-function drawBackground() {
-    ctx.save();
-    ctx.translate(-cameraOffset % backgroundCanvas.width, 0);
-    ctx.drawImage(backgroundCanvas, 0, 0);
-    ctx.drawImage(backgroundCanvas, backgroundCanvas.width, 0);
-    ctx.restore();
-}
-
-// Функция отрисовки персонажа
 function drawCharacter() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -146,7 +130,7 @@ function drawCharacter() {
     const sprite = character.jumping || character.dy !== 0 ? jumpingSprite : characterSprite;
     if (character.dx < 0) {
         ctx.scale(-1, 1);
-        ctx.drawImage(sprite, -character.x - character.width, character.y, character.width, character.height);
+        ctx.drawImage(sprite, -character.x - character.width, character.y, -character.width, character.height);
     } else {
         ctx.drawImage(sprite, character.x, character.y, character.width, character.height);
     }
@@ -156,7 +140,6 @@ function drawCharacter() {
     ctx.filter = 'none';
 }
 
-// Функция отрисовки препятствий
 function drawObstacles() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -166,7 +149,6 @@ function drawObstacles() {
     ctx.restore();
 }
 
-// Функция отрисовки платформ
 function drawPlatforms() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -176,7 +158,6 @@ function drawPlatforms() {
     ctx.restore();
 }
 
-// Функция отрисовки монет
 function drawCoins() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -186,7 +167,6 @@ function drawCoins() {
     ctx.restore();
 }
 
-// Функция отрисовки врагов
 function drawEnemies() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -196,7 +176,6 @@ function drawEnemies() {
     ctx.restore();
 }
 
-// Функция отрисовки снарядов
 function drawProjectiles() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -209,7 +188,6 @@ function drawProjectiles() {
     ctx.restore();
 }
 
-// Функция отрисовки пола
 function drawFloors() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -220,7 +198,16 @@ function drawFloors() {
     ctx.restore();
 }
 
-// Функция обновления персонажа
+function drawBackground() {
+    const bgWidth = canvas.width * 1.5; // Увеличенный фон для предотвращения мерцания
+    ctx.save();
+    ctx.translate(-cameraOffset, 0);
+    ctx.drawImage(decorationSprite, -backgroundOffset, 0, bgWidth, canvas.height);
+    ctx.drawImage(decorationSprite, bgWidth - backgroundOffset, 0, bgWidth, canvas.height);
+    ctx.drawImage(decorationSprite, 2 * bgWidth - backgroundOffset, 0, bgWidth, canvas.height);
+    ctx.restore();
+}
+
 function updateCharacter() {
     character.dy += gravity;
     character.y += character.dy;
@@ -271,23 +258,22 @@ function updateCharacter() {
     }
 }
 
-// Функция проверки столкновения
 function isColliding(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
+    const characterCollider = {
+        x: rect1.x + 10,
+        y: rect1.y + 10,
+        width: rect1.width - 20,
+        height: rect1.height - 20
+    };
+    return characterCollider.x < rect2.x + rect2.width &&
+           characterCollider.x + characterCollider.width > rect2.x &&
+           characterCollider.y < rect2.y + rect2.height &&
+           characterCollider.y + characterCollider.height > rect2.y;
 }
 
-// Функция сбора монет
 function collectCoins() {
     coins.forEach((coin, index) => {
-        if (isColliding(character, {
-            x: coin.x - coin.radius,
-            y: coin.y - coin.radius + coinOffset,
-            width: coin.radius * 2.5,
-            height: coin.radius * 2.5
-        })) {
+        if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
             score += 10;
 
@@ -299,7 +285,6 @@ function collectCoins() {
     });
 }
 
-// Функция обработки столкновений с врагами
 function hitEnemies() {
     enemies.forEach((enemy, index) => {
         if (isColliding(character, enemy)) {
@@ -325,42 +310,42 @@ function hitEnemies() {
     });
 }
 
-// Функция обработки неуязвимости
 function handleInvincibility() {
     if (invincible) {
-        invincibleTime--;
+        invincibleTime -= 1;
         if (invincibleTime <= 0) {
             invincible = false;
         }
     }
+
     if (coinInvincible) {
-        coinInvincibleTime--;
+        coinInvincibleTime -= 1;
         if (coinInvincibleTime <= 0) {
             coinInvincible = false;
         }
     }
 }
 
-// Функция очистки холста
 function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Функция генерации препятствий с ограничением их количества
 function generateObstacles() {
-    if (obstacles.length < 5 && Math.random() < 0.02) {
-        const obstacle = {
-            x: canvas.width + 1000,
-            y: canvas.height - 120,
-            width: 110,
-            height: 140,
-            speed: gameSpeed
-        };
-        obstacles.push(obstacle);
-    }
+    const obstacleInterval = 4000;
+    setInterval(() => {
+        if (Math.random() < 0.2) {
+            const obstacle = {
+                x: canvas.width + 1000, // Добавлен запас для появления объектов
+                y: canvas.height - 120,
+                width: 110,
+                height: 140,
+                speed: gameSpeed
+            };
+            obstacles.push(obstacle);
+        }
+    }, obstacleInterval);
 }
 
-// Функция отрисовки HUD (жизни и счёт)
 function drawHUD() {
     for (let i = 0; i < lives; i++) {
         ctx.drawImage(healthSprite, 40 + i * 40, 20, 45, 40);
@@ -373,25 +358,28 @@ function drawHUD() {
     ctx.fillText(score, 155, 103);
 }
 
-// Функция генерации платформ
 function generatePlatforms() {
-    if (platforms.length < 5 && Math.random() < 0.02) {
+    function createPlatform() {
         const platform = {
-            x: canvas.width + 1000,
-            y: Math.random() < 0.5 ? canvas.height - 220 : canvas.height - 460,
+            x: canvas.width + 1000, // Увеличен запас для появления объектов
+            y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460,
             width: 100,
             height: 35,
             speed: gameSpeed
         };
         platforms.push(platform);
+
+        const nextInterval = Math.random() * 1000 + 9000;
+        setTimeout(createPlatform, nextInterval);
     }
+
+    createPlatform();
 }
 
-// Функция генерации монет
 function generateCoins() {
-    if (coins.length < 10 && Math.random() < 0.02) {
+    for (let i = 0; i < 4; i++) {
         const coin = {
-            x: canvas.width + 1000,
+            x: canvas.width + i * 800 + 300, // Добавлен запас для появления объектов
             y: Math.random() < 0.5 ? canvas.height - 200 : canvas.height - 460,
             radius: 20
         };
@@ -399,24 +387,22 @@ function generateCoins() {
     }
 }
 
-// Функция генерации врагов
 function generateEnemies() {
-    if (enemies.length < 5 && Math.random() < 0.01) {
+    for (let i = 0; i < 20; i++) {
         const enemy = {
-            x: canvas.width + 1000,
+            x: canvas.width + i * 750 + 1000, // Большой запас для появления объектов за экраном
             y: canvas.height - 150,
             width: 100,
-            height: 100,
-            dy: 0
+            height: 100
         };
         enemies.push(enemy);
     }
 }
 
-// Функция генерации пола
+
 function generateFloors() {
-    const floorWidth = 1000;
-    const totalWidth = canvas.width * 10;
+    const floorWidth = 1000; // Ширина одного сегмента пола
+    const totalWidth = canvas.width * 10; // Увеличенный запас для появления объектов
 
     for (let i = 0; i < totalWidth / floorWidth; i++) {
         const floor = {
@@ -429,7 +415,9 @@ function generateFloors() {
     }
 }
 
-// Функция генерации снарядов
+
+
+
 function generateProjectiles() {
     enemies.forEach(enemy => {
         if (Math.random() < 0.005) {
@@ -444,13 +432,13 @@ function generateProjectiles() {
     });
 }
 
-// Функция обновления монет с плавной анимацией
 function updateCoins() {
-    coinAnimationFrame += 0.1;
-    coinOffset = Math.sin(coinAnimationFrame) * 10;
+    if (coinOffset > 20 || coinOffset < -20) {
+        coinDirection *= -1;
+    }
+    coinOffset += coinDirection * 0.5;
 }
 
-// Функция обновления врагов
 function updateEnemies() {
     enemies.forEach((enemy, index) => {
         if (Math.random() < 0.02) {
@@ -465,13 +453,50 @@ function updateEnemies() {
 
         enemy.x -= gameSpeed;
 
-        if (enemy.x + enemy.width < 0) {
+        // Удаление врагов, которые полностью вышли за границы экрана
+        if (enemy.x + enemy.width <= 0) {
             enemies.splice(index, 1);
         }
     });
 }
 
-// Функция обновления снарядов
+
+function drawEnemies() {
+    ctx.save();
+    ctx.translate(-cameraOffset, 0);
+    enemies.forEach(enemy => {
+        ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
+    });
+    ctx.restore();
+
+    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
+}
+
+
+function isCollidingWithVirtualCollider(projectile, rect) {
+    const collider = {
+        x: rect.x + 10,
+        y: rect.y + 10,
+        width: rect.width - 20,
+        height: rect.height - 20
+    };
+
+    const distX = Math.abs(projectile.x - (collider.x + collider.width / 2));
+    const distY = Math.abs(projectile.y - (collider.y + collider.height / 2));
+
+    if (distX > (collider.width / 2 + projectile.radius) || distY > (collider.height / 2 + projectile.radius)) {
+        return false;
+    }
+
+    if (distX <= (collider.width / 2) || distY <= (collider.height / 2)) {
+        return true;
+    }
+
+    const dx = distX - collider.width / 2;
+    const dy = distY - collider.height / 2;
+    return (dx * dx + dy * dy <= (projectile.radius * projectile.radius));
+}
+
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
@@ -492,7 +517,6 @@ function updateProjectiles() {
     });
 }
 
-// Функция проверки столкновения с персонажем
 function isCollidingWithCharacter(projectile, character) {
     const projectileCollider = {
         x: projectile.x - projectile.radius,
@@ -508,10 +532,16 @@ function isCollidingWithCharacter(projectile, character) {
         height: character.height
     };
 
-    return isColliding(projectileCollider, characterCollider);
+    return isRectColliding(projectileCollider, characterCollider);
 }
 
-// Функция обновления камеры
+function isRectColliding(rect1, rect2) {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+}
+
 function updateCamera() {
     const centerX = canvas.width / 2;
     if (character.x > centerX) {
@@ -521,7 +551,6 @@ function updateCamera() {
     }
 }
 
-// Основной игровой цикл
 function gameLoop() {
     clearCanvas();
     updateCamera();
@@ -540,30 +569,24 @@ function gameLoop() {
     updateCoins();
     updateEnemies();
     updateProjectiles();
+    
+    // Обновляем скорость игры
     updateGameSpeed();
 
-    updateObstacles();
-    updatePlatforms();
-
-    obstacles.forEach((obstacle, index) => {
+    obstacles.forEach(obstacle => {
         obstacle.x -= gameSpeed;
-        if (obstacle.x + obstacle.width < 0) {
-            obstacles.splice(index, 1);
-        }
     });
 
-    platforms.forEach((platform, index) => {
+    platforms.forEach(platform => {
         platform.x -= gameSpeed;
-        if (platform.x + platform.width < 0) {
-            platforms.splice(index, 1);
-        }
     });
 
-    coins.forEach((coin, index) => {
+    coins.forEach(coin => {
         coin.x -= gameSpeed;
-        if (coin.x + coin.radius * 2.5 < 0) {
-            coins.splice(index, 1);
-        }
+    });
+
+    enemies.forEach(enemy => {
+        enemy.x -= gameSpeed;
     });
 
     floors.forEach(floor => {
@@ -573,15 +596,19 @@ function gameLoop() {
         }
     });
 
+    projectiles.forEach(projectile => {
+        projectile.x -= gameSpeed;
+    });
+
     backgroundOffset += gameSpeed / 20;
-    if (backgroundOffset >= backgroundCanvas.width) {
+    if (backgroundOffset >= canvas.width * 1.5) {
         backgroundOffset = 0;
     }
 
-    generateObstacles();
-    generatePlatforms();
-    generateCoins();
-    generateEnemies();
+    if (Math.random() < 0.01) generateObstacles();
+    if (Math.random() < 0.01) generatePlatforms();
+    if (Math.random() < 0.01) generateCoins();
+    if (Math.random() < 0.01) generateEnemies();
     generateProjectiles();
 
     drawHUD();
@@ -593,9 +620,8 @@ function gameLoop() {
     }
 }
 
-// Обработчик нажатия клавиш
+
 document.addEventListener('keydown', (e) => {
-    if (e.repeat) return; // Игнорировать повторные события при удержании клавиши
     if (e.key === 'a' || e.key === 'ф' || e.key === 'A' || e.key === 'Ф') {
         character.dx = -character.speed;
     } else if (e.key === 'd' || e.key === 'в' || e.key === 'D' || e.key === 'В') {
@@ -612,17 +638,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Обработчик отпускания клавиш
-document.addEventListener('keyup', (e) => {
-    if (
-        e.key === 'a' || e.key === 'ф' || e.key === 'A' || e.key === 'Ф' ||
-        e.key === 'd' || e.key === 'в' || e.key === 'D' || e.key === 'В'
-    ) {
-        character.dx = 0;
-    }
-});
-
-// Обработчик сенсорного ввода
 canvas.addEventListener('touchstart', (e) => {
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
@@ -643,24 +658,13 @@ canvas.addEventListener('touchstart', (e) => {
     }
 });
 
-// Обработчик окончания сенсорного ввода
 canvas.addEventListener('touchend', (e) => {
     character.dx = 0;
 });
 
-// Функция воспроизведения звука
-function playSound(sound) {
-    const clone = sound.cloneNode();
-    clone.play();
-}
-
-// Функция обновления скорости игры
-function updateGameSpeed() {
-    const maxMultiplier = 4;
-    const scoreFactor = 1000;
-    const multiplier = Math.min(1 + score / scoreFactor, maxMultiplier);
-    gameSpeed = 4 * multiplier;
-}
-
-// Запуск игры
 resetGame();
+
+function playSound(sound) {
+    sound.currentTime = 0;
+    sound.play();
+}
