@@ -259,11 +259,12 @@ function updateCharacter() {
 }
 
 function isColliding(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-};
+    const characterCollider = {
+        x: rect1.x + 10,
+        y: rect1.y + 10,
+        width: rect1.width - 20,
+        height: rect1.height - 20
+    };
     return characterCollider.x < rect2.x + rect2.width &&
            characterCollider.x + characterCollider.width > rect2.x &&
            characterCollider.y < rect2.y + rect2.height &&
@@ -330,7 +331,6 @@ function clearCanvas() {
 }
 
 function generateObstacles() {
-    if (obstacles.length < 5 && Math.random() < 0.02) {
     const obstacleInterval = 4000;
     setInterval(() => {
         if (Math.random() < 0.2) {
@@ -343,7 +343,7 @@ function generateObstacles() {
             };
             obstacles.push(obstacle);
         }
-    }, obstacleInterval) };
+    }, obstacleInterval);
 }
 
 function drawHUD() {
@@ -432,11 +432,11 @@ function generateProjectiles() {
     });
 }
 
-let coinAnimationFrame = 0;
-
 function updateCoins() {
-    coinAnimationFrame += 0.1;
-    coinOffset = Math.sin(coinAnimationFrame) * 10; // Амплитуда колебаний 10 пикселей
+    if (coinOffset > 20 || coinOffset < -20) {
+        coinDirection *= -1;
+    }
+    coinOffset += coinDirection * 0.5;
 }
 
 function updateEnemies() {
@@ -469,6 +469,7 @@ function drawEnemies() {
     });
     ctx.restore();
 
+    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
 }
 
 
