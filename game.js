@@ -26,8 +26,6 @@ function updateGameSpeed() {
     gameSpeed = 4 * multiplier;
 }
 
-
-
 if (detectMobile()) {
     resizeCanvas();
 }
@@ -49,6 +47,9 @@ const jumpSound = document.getElementById('jumpSound');
 const collisionSound = document.getElementById('collisionSound');
 const healthSprite = document.getElementById('healthSprite');
 const expSprite = document.getElementById('expSprite');
+const kopikSprite = document.getElementById('kopikSprite'); // Добавлено
+
+const shootSound = document.getElementById('shootSound'); // Добавлено
 
 let tripleJump = false;
 const gravity = 0.5;
@@ -66,6 +67,10 @@ let doubleJump = false;
 let gameOver = false;
 let fallingThroughPlatform = false;
 let cameraOffset = 0;
+
+let canShoot = false; // Добавлено
+let shootTimer = 0; // Добавлено
+let kopikCount = 0; // Добавлено
 
 const character = {
     x: 50,
@@ -87,6 +92,7 @@ const coins = [];
 const enemies = [];
 const projectiles = [];
 const floors = [];
+const kopiks = []; // Добавлено
 
 function resetGame() {
     character.x = 50;
@@ -101,12 +107,16 @@ function resetGame() {
     invincibleTime = 0;
     coinInvincible = false;
     coinInvincibleTime = 0;
+    canShoot = false; // Добавлено
+    shootTimer = 0; // Добавлено
+    kopikCount = 0; // Добавлено
     obstacles.length = 0;
     platforms.length = 0;
     coins.length = 0;
     enemies.length = 0;
     projectiles.length = 0;
     floors.length = 0;
+    kopiks.length = 0; // Добавлено
     gameOver = false;
     doubleJump = false;
     tripleJump = false;
@@ -116,6 +126,7 @@ function resetGame() {
     generateCoins();
     generateEnemies();
     generateFloors();
+    generateKopiks(); // Добавлено
     gameLoop();
 }
 
@@ -167,6 +178,15 @@ function drawCoins() {
     ctx.restore();
 }
 
+function drawKopiks() { // Добавлено
+    ctx.save();
+    ctx.translate(-cameraOffset, 0);
+    kopiks.forEach(kopik => {
+        ctx.drawImage(kopikSprite, kopik.x - kopik.radius, kopik.y - kopik.radius, kopik.radius * 2, kopik.radius * 2);
+    });
+    ctx.restore();
+}
+
 function drawEnemies() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -174,15 +194,17 @@ function drawEnemies() {
         ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
     });
     ctx.restore();
+
+    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
 }
 
 function drawProjectiles() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
-    ctx.fillStyle = 'blue';
     projectiles.forEach(projectile => {
         ctx.beginPath();
         ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'red'; // Изменено на красный цвет для пули
         ctx.fill();
     });
     ctx.restore();
@@ -212,6 +234,8 @@ function updateCharacter() {
     character.dy += gravity;
     character.y += character.dy;
     character.x += character.dx;
+
+    // Удалены ограничения по горизонтали
 
     if (character.y + character.height > canvas.height - 50) {
         character.y = canvas.height - 50 - character.height;
@@ -246,12 +270,7 @@ function updateCharacter() {
         }
     });
 
-    if (character.x < 0) {
-        character.x = 0;
-    }
-    if (character.x + character.width > canvas.width) {
-        character.x = canvas.width - character.width;
-    }
+    // Удалены ограничения по горизонтали
 
     if (character.dy === 0) {
         fallingThroughPlatform = false;
@@ -285,11 +304,39 @@ function collectCoins() {
     });
 }
 
+function collectKopiks() { // Добавлено
+    kopiks.forEach((kopik, index) => {
+        if (isColliding(character, {x: kopik.x - kopik.radius, y: kopik.y - kopik.radius, width: kopik.radius * 2, height: kopik.radius * 2})) {
+            kopiks.splice(index, 1);
+            kopikCount += 1;
+
+            // Если собрано 20 копиков, добавляем жизнь
+            if (kopikCount >= 20) {
+                lives += 1;
+                kopikCount = 0; // Сбрасываем счетчик
+            }
+
+            // Активируем возможность стрельбы на 10 секунд
+            canShoot = true;
+            shootTimer = 600; // 10 секунд при 60 FPS
+        }
+    });
+}
+
 function hitEnemies() {
-    enemies.forEach((enemy, index) => {
+    enemies.forEach((enemy, enemyIndex) => {
+        projectiles.forEach((projectile, projIndex) => {
+            if (isColliding(projectile, enemy)) {
+                enemies.splice(enemyIndex, 1);
+                projectiles.splice(projIndex, 1);
+                score += 20;
+                playSound(collisionSound);
+            }
+        });
+
         if (isColliding(character, enemy)) {
             if (character.dy > 0) {
-                enemies.splice(index, 1);
+                enemies.splice(enemyIndex, 1);
                 score += 20;
                 character.dy = -10;
 
@@ -346,6 +393,18 @@ function generateObstacles() {
     }, obstacleInterval);
 }
 
+function generateKopiks() { // Добавлено
+    const kopikInterval = 7000; // Интервал появления копиков (каждые 7 секунд)
+    setInterval(() => {
+        const kopik = {
+            x: canvas.width + 1000, // Начальная позиция за пределами экрана
+            y: Math.random() * (canvas.height - 100) + 50, // Случайная вертикальная позиция
+            radius: 15
+        };
+        kopiks.push(kopik);
+    }, kopikInterval);
+}
+
 function drawHUD() {
     for (let i = 0; i < lives; i++) {
         ctx.drawImage(healthSprite, 40 + i * 40, 20, 45, 40);
@@ -399,7 +458,6 @@ function generateEnemies() {
     }
 }
 
-
 function generateFloors() {
     const floorWidth = 1000; // Ширина одного сегмента пола
     const totalWidth = canvas.width * 10; // Увеличенный запас для появления объектов
@@ -415,9 +473,6 @@ function generateFloors() {
     }
 }
 
-
-
-
 function generateProjectiles() {
     enemies.forEach(enemy => {
         if (Math.random() < 0.005) {
@@ -430,6 +485,18 @@ function generateProjectiles() {
             projectiles.push(projectile);
         }
     });
+}
+
+function shootProjectile() { // Добавлено
+    const projectile = {
+        x: character.x + character.width,
+        y: character.y + character.height / 2,
+        radius: 5,
+        dx: 10, // Скорость пули вправо
+        dy: 0
+    };
+    projectiles.push(projectile);
+    playSound(shootSound); // Воспроизведение звука выстрела
 }
 
 function updateCoins() {
@@ -460,19 +527,6 @@ function updateEnemies() {
     });
 }
 
-
-function drawEnemies() {
-    ctx.save();
-    ctx.translate(-cameraOffset, 0);
-    enemies.forEach(enemy => {
-        ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
-    });
-    ctx.restore();
-
-    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
-}
-
-
 function isCollidingWithVirtualCollider(projectile, rect) {
     const collider = {
         x: rect.x + 10,
@@ -500,7 +554,7 @@ function isCollidingWithVirtualCollider(projectile, rect) {
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
-        if (projectile.x + projectile.radius < 0) {
+        if (projectile.x + projectile.radius < 0 || projectile.x - projectile.radius > canvas.width) {
             projectiles.splice(index, 1);
         }
         if (isCollidingWithCharacter(projectile, character) && !invincible && !coinInvincible) {
@@ -561,15 +615,25 @@ function gameLoop() {
     drawObstacles();
     drawPlatforms();
     drawCoins();
+    drawKopiks(); // Добавлено
     drawEnemies();
     drawProjectiles();
     updateCharacter();
     collectCoins();
+    collectKopiks(); // Добавлено
     hitEnemies();
     updateCoins();
     updateEnemies();
     updateProjectiles();
     
+    // Обновляем состояние стрельбы
+    if (canShoot) {
+        shootTimer -= 1;
+        if (shootTimer <= 0) {
+            canShoot = false;
+        }
+    }
+
     // Обновляем скорость игры
     updateGameSpeed();
 
@@ -583,6 +647,10 @@ function gameLoop() {
 
     coins.forEach(coin => {
         coin.x -= gameSpeed;
+    });
+
+    kopiks.forEach(kopik => { // Обновляем позицию копиков
+        kopik.x -= gameSpeed;
     });
 
     enemies.forEach(enemy => {
@@ -620,7 +688,6 @@ function gameLoop() {
     }
 }
 
-
 document.addEventListener('keydown', (e) => {
     if (e.key === 'a' || e.key === 'ф' || e.key === 'A' || e.key === 'Ф') {
         character.dx = -character.speed;
@@ -635,6 +702,10 @@ document.addEventListener('keydown', (e) => {
         resetGame();
     } else if (e.key === 's' || e.key === 'ы' || e.key === 'S' || e.key === 'Ы') {
         fallingThroughPlatform = true;
+    } 
+    // Обработка стрельбы
+    else if ((e.key === 'j' || e.key === 'ж') && canShoot) {
+        shootProjectile();
     }
 });
 
