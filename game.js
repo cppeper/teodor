@@ -1,49 +1,3 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Игра</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: #333;
-        }
-        canvas {
-            background: #000;
-            display: block;
-            margin: 0 auto;
-            position: relative;
-            top: 0;
-            left: 0;
-        }
-        /* Примерные стили для звука и спрайтов (чтобы не отображались напрямую) */
-        audio, img {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-<!-- Все спрайты и звуки находятся здесь, скрытыми -->
-<img id="stumpSprite" src="stump.png" alt="Stump">
-<img id="gameOverSprite" src="gameover.png" alt="GameOver">
-<img id="shvabraSprite" src="shvabra.png" alt="Obstacle">
-<img id="jumpingSprite" src="jump.png" alt="JumpingCharacter">
-<img id="platformSprite" src="platform.png" alt="Platform">
-<img id="characterSprite" src="character.png" alt="Character">
-<img id="coinSprite" src="coin.png" alt="Coin">
-<img id="enemySprite" src="enemy.png" alt="Enemy">
-<img id="decorationSprite" src="background.png" alt="Decoration">
-<img id="healthSprite" src="health.png" alt="Health">
-<img id="expSprite" src="exp.png" alt="Exp">
-<audio id="backgroundMusic" src="music.mp3"></audio>
-<audio id="jumpSound" src="jump.mp3"></audio>
-<audio id="collisionSound" src="collision.mp3"></audio>
-
-<canvas id="gameCanvas"></canvas>
-
-<script>
 // ===================== Основные настройки холста и контекста =====================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -827,6 +781,3 @@ function playSound(sound) {
 
 // ===================== Запуск игры при загрузке страницы =====================
 resetGame();
-</script>
-</body>
-</html>
