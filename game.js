@@ -5,6 +5,9 @@ const ctx = canvas.getContext('2d');
 const BASE_WIDTH = 1280; // Базовая ширина холста
 const BASE_HEIGHT = 720; // Базовая высота холста
 
+// Глобальные переменные игры
+let gameSpeed = 4; // Инициализируем до использования в resizeCanvas
+
 // Функция для определения мобильного устройства
 function detectMobile() {
     return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -54,18 +57,18 @@ const coinSprite = document.getElementById('coinSprite');
 const greenCoinSprite = document.getElementById('greenCoinSprite'); // Новая спрайт для зелёных монет
 const enemySprite = document.getElementById('enemySprite');
 const decorationSprite = document.getElementById('decorationSprite');
+const healthSprite = document.getElementById('healthSprite');
+const expSprite = document.getElementById('expSprite');
+
 const backgroundMusic = document.getElementById('backgroundMusic');
 const jumpSound = document.getElementById('jumpSound');
 const collisionSound = document.getElementById('collisionSound');
 const shootSound = document.getElementById('shootSound'); // Спрайт для стрельбы
 const enemyHitSound = document.getElementById('enemyHitSound'); // Спрайт для попадания во врага
-const healthSprite = document.getElementById('healthSprite');
-const expSprite = document.getElementById('expSprite');
 
 // ===================== Глобальные переменные игры =====================
 let tripleJump = false;
 const gravity = 0.5;
-let gameSpeed = detectMobile() ? 2 : 4; // Скорость зависит от устройства
 let score = 0;
 let backgroundOffset = 0;
 let coinOffset = 0;
@@ -220,7 +223,7 @@ function drawEnemies() {
     ctx.restore();
 }
 
-// ===================== Рисуем снаряды (вражеские пули) =====================
+// ===================== Рисуем вражеские пули =====================
 function drawProjectiles() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -233,7 +236,7 @@ function drawProjectiles() {
     ctx.restore();
 }
 
-// ===================== Рисуем снаряды (пули игрока) =====================
+// ===================== Рисуем пули игрока =====================
 function drawPlayerBullets() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
@@ -504,7 +507,7 @@ function generateEnemies() {
     }
 }
 
-// ===================== Генерация снарядов =====================
+// ===================== Генерация вражеских пуль =====================
 function generateProjectiles() {
     enemies.forEach(enemy => {
         if (Math.random() < 0.005) { // Небольшой шанс, что враг выстрелит
@@ -547,7 +550,7 @@ function updateEnemies() {
     });
 }
 
-// ===================== Обновление снарядов (вражеские пули) =====================
+// ===================== Обновление вражеских пуль =====================
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
@@ -556,7 +559,7 @@ function updateProjectiles() {
             projectiles.splice(index, 1);
         }
         // Проверка столкновения со героем
-        if (isColliding(character, projectile) && !invincible && !coinInvincible) {
+        if (isCollidingCircleRect(projectile, character) && !invincible && !coinInvincible) {
             playSound(collisionSound);
             lives -= 1;
             invincible = true;
@@ -570,7 +573,7 @@ function updateProjectiles() {
     });
 }
 
-// ===================== Обновление снарядов (пули игрока) =====================
+// ===================== Обновление пуль игрока =====================
 function updatePlayerBullets() {
     playerBullets.forEach((bullet, index) => {
         bullet.x += bullet.dx;
@@ -596,25 +599,12 @@ function handleBulletCollisions() {
     });
 }
 
-// ===================== Рисуем пули игрока =====================
-function drawPlayerBullets() {
-    ctx.save();
-    ctx.translate(-cameraOffset, 0);
-    ctx.fillStyle = 'white'; // Белые пули
-    playerBullets.forEach(bullet => {
-        ctx.beginPath();
-        ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    ctx.restore();
-}
-
 // ===================== Сбор зелёных монет и стрельба =====================
 function shootBullet() {
     const bullet = {
         x: character.x + character.width, // Начальная позиция пули
         y: character.y + character.height / 2,
-        radius: 5,
+        radius: 5, // Размер пули
         dx: 10 // Скорость пули
     };
     playerBullets.push(bullet);
@@ -815,7 +805,7 @@ canvas.addEventListener('touchend', () => {
     character.dx = 0;
 });
 
-// ===================== Кнопка паузы =====================
+// ===================== Добавление кнопок паузы и меню =====================
 function addControlButtons() {
     // Создаём кнопку паузы
     const pauseButton = document.createElement('button');
@@ -846,30 +836,33 @@ function addControlButtons() {
     document.body.appendChild(menuButton);
 
     // Обработчик паузы
-    let isPaused = false;
     pauseButton.addEventListener('click', () => {
         togglePause();
     });
 
     // Обработчик меню (можно расширить функциональность)
     menuButton.addEventListener('click', () => {
-        alert('Меню игры: \n1. Продолжить\n2. Рестарт');
+        alert('Меню игры:\n1. Продолжить\n2. Рестарт');
         // Здесь можно добавить реальное меню
     });
+}
 
-    // Функция паузы
-    function togglePause() {
-        if (!isPaused) {
-            isPaused = true;
-            backgroundMusic.pause();
-            cancelAnimationFrame(animationFrameId);
-            pauseButton.innerText = 'Продолжить';
-        } else {
-            isPaused = false;
-            backgroundMusic.play();
-            gameLoop();
-            pauseButton.innerText = 'Пауза';
-        }
+// ===================== Функция паузы =====================
+let isPaused = false;
+function togglePause() {
+    isPaused = !isPaused;
+    if (isPaused) {
+        backgroundMusic.pause();
+        cancelAnimationFrame(animationFrameId);
+        // Изменяем текст кнопки
+        const pauseButton = document.querySelector('button');
+        if (pauseButton) pauseButton.innerText = 'Продолжить';
+    } else {
+        backgroundMusic.play();
+        gameLoop();
+        // Изменяем текст кнопки
+        const pauseButton = document.querySelector('button');
+        if (pauseButton) pauseButton.innerText = 'Пауза';
     }
 }
 
@@ -881,232 +874,8 @@ function playSound(sound) {
     }
 }
 
-// ===================== Функция стрельбы =====================
-function shootBullet() {
-    const bullet = {
-        x: character.x + character.width, // Начальная позиция пули
-        y: character.y + character.height / 2,
-        radius: 5, // Размер пули
-        dx: 10 // Скорость пули
-    };
-    playerBullets.push(bullet);
-    playSound(shootSound); // Воспроизводим звук стрельбы
-}
-
-// ===================== Проверка столкновений пуль игрока с врагами =====================
-function handleBulletCollisions() {
-    playerBullets.forEach((bullet, bIndex) => {
-        enemies.forEach((enemy, eIndex) => {
-            if (isCollidingCircleRect(bullet, enemy)) {
-                // Удаляем пульку и врага
-                playerBullets.splice(bIndex, 1);
-                enemies.splice(eIndex, 1);
-                score += 30; // Увеличиваем счёт за уничтожение врага
-                playSound(enemyHitSound); // Воспроизводим звук попадания
-            }
-        });
-    });
-}
-
-// ===================== Проверка коллизии (круг с прямоугольником) =====================
-function isCollidingCircleRect(circle, rect) {
-    const distX = Math.abs(circle.x - rect.x - rect.width / 2);
-    const distY = Math.abs(circle.y - rect.y - rect.height / 2);
-    
-    if (distX > (rect.width / 2 + circle.radius)) { return false; }
-    if (distY > (rect.height / 2 + circle.radius)) { return false; }
-    
-    if (distX <= (rect.width / 2)) { return true; } 
-    if (distY <= (rect.height / 2)) { return true; }
-    
-    const dx = distX - rect.width / 2;
-    const dy = distY - rect.height / 2;
-    return (dx * dx + dy * dy <= (circle.radius * circle.radius));
-}
-
-// ===================== Главный игровой цикл =====================
-function gameLoop() {
-    if (gameOver) {
-        // Отрисовка экрана Game Over
-        clearCanvas();
-        drawBackground();
-        drawFloors();
-        ctx.drawImage(gameOverSprite, BASE_WIDTH / 2 - 100, BASE_HEIGHT / 2 - 50, 200, 100);
-        return; // Прерываем игровой цикл
-    }
-
-    clearCanvas();
-    updateCamera();
-    drawBackground();
-    drawFloors();
-    handleInvincibility();
-    drawCharacter();
-    drawObstacles();
-    drawPlatforms();
-    drawCoins();
-    drawEnemies();
-    drawProjectiles();
-    drawPlayerBullets();
-    drawHUD();
-
-    updateCharacter();
-    collectCoins();
-    hitEnemies();
-    updateCoins();
-    updateEnemies();
-    updateProjectiles();
-    updatePlayerBullets();
-    handleBulletCollisions();
-
-    // Обновляем скорость игры
-    updateGameSpeed();
-
-    // Двигаем объекты
-    obstacles.forEach(obstacle => {
-        obstacle.x -= gameSpeed;
-    });
-
-    platforms.forEach(platform => {
-        platform.x -= gameSpeed;
-    });
-
-    coins.forEach(coin => {
-        coin.x -= gameSpeed;
-    });
-
-    enemies.forEach(enemy => {
-        enemy.x -= gameSpeed;
-    });
-
-    floors.forEach(floor => {
-        floor.x -= gameSpeed;
-        if (floor.x + floor.width < 0) {
-            floor.x = BASE_WIDTH;
-        }
-    });
-
-    projectiles.forEach(projectile => {
-        projectile.x -= gameSpeed;
-    });
-
-    playerBullets.forEach(bullet => {
-        bullet.x -= gameSpeed;
-    });
-
-    // Смещение фона
-    backgroundOffset += gameSpeed / 20;
-    if (backgroundOffset >= BASE_WIDTH * 1.5) {
-        backgroundOffset = 0;
-    }
-
-    // Запрашиваем следующий кадр
-    animationFrameId = requestAnimationFrame(gameLoop);
-}
-
-// ===================== Генерация игровых объектов через setInterval =====================
-
-// Генерация препятствий (швабр)
-const obstacleInterval = 4000; // каждые 4 секунды
-setInterval(() => {
-    if (Math.random() < 0.8) { // Увеличил вероятность спауна
-        generateObstacles();
-    }
-}, obstacleInterval);
-
-// Генерация платформ
-const platformInterval = 5000; // каждые 5 секунд
-setInterval(() => {
-    generatePlatforms();
-}, platformInterval);
-
-// Генерация монет
-const coinInterval = 3000; // каждые 3 секунды
-setInterval(() => {
-    generateCoins();
-}, coinInterval);
-
-// Генерация врагов
-const enemyInterval = 7000; // каждые 7 секунд
-setInterval(() => {
-    generateEnemies();
-}, enemyInterval);
-
-// ===================== Управление с клавиатуры =====================
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'a' || e.key === 'ф' || e.key === 'A' || e.key === 'Ф') {
-        character.dx = -character.speed;
-    } else if (e.key === 'd' || e.key === 'в' || e.key === 'D' || e.key === 'В') {
-        character.dx = character.speed;
-    } else if ((e.key === ' ' || e.key === 'Spacebar') && character.jumpCount < character.maxJumps) {
-        character.dy = -12;
-        character.jumpCount++;
-        character.jumping = true;
-        playSound(jumpSound);
-    } else if ((e.key === 'f' || e.key === 'F') && canShoot && !gameOver) { // Клавиша для стрельбы
-        shootBullet();
-    } else if ((e.key === 'p' || e.key === 'P') && !gameOver) { // Клавиша паузы
-        togglePause();
-    } else if ((e.key === ' ' || e.key === 'Spacebar') && gameOver) {
-        resetGame();
-    } else if (e.key === 's' || e.key === 'ы' || e.key === 'S' || e.key === 'Ы') {
-        fallingThroughPlatform = true;
-    }
-});
-
-// Обработчик отпускания клавиш (для остановки движения)
-document.addEventListener('keyup', (e) => {
-    if (
-        e.key === 'a' || e.key === 'ф' ||
-        e.key === 'A' || e.key === 'Ф' ||
-        e.key === 'd' || e.key === 'в' ||
-        e.key === 'D' || e.key === 'В'
-    ) {
-        character.dx = 0;
-    }
-});
-
-// ===================== Управление с тач-событий (мобильные) =====================
-canvas.addEventListener('touchstart', (e) => {
-    const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-    const touchY = e.touches[0].clientY - canvas.getBoundingClientRect().top;
-
-    if (touchY > character.y + character.height) {
-        fallingThroughPlatform = true;
-    } else if (touchY < character.y) {
-        if (character.jumpCount < character.maxJumps) {
-            character.dy = -12;
-            character.jumpCount++;
-            character.jumping = true;
-            playSound(jumpSound);
-        }
-    } else if (touchX < character.x) {
-        character.dx = -character.speed;
-    } else if (touchX > character.x + character.width) {
-        character.dx = character.speed;
-    }
-});
-
-canvas.addEventListener('touchend', () => {
-    character.dx = 0;
-});
-
-// ===================== Добавление кнопок паузы и меню =====================
-addControlButtons();
-
-// ===================== Функция паузы =====================
-let isPaused = false;
-function togglePause() {
-    isPaused = !isPaused;
-    if (isPaused) {
-        backgroundMusic.pause();
-        cancelAnimationFrame(animationFrameId);
-    } else {
-        backgroundMusic.play();
-        gameLoop();
-    }
-}
-
 // ===================== Запуск игры при загрузке страницы =====================
 window.onload = () => {
+    addControlButtons();
     resetGame();
 };
