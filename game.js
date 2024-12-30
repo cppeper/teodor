@@ -47,8 +47,10 @@ const jumpSound = document.getElementById('jumpSound');
 const collisionSound = document.getElementById('collisionSound');
 const healthSprite = document.getElementById('healthSprite');
 const expSprite = document.getElementById('expSprite');
-const kopikSprite = document.getElementById('kopikSprite'); // Добавлено
-const shootSound = document.getElementById('shootSound'); // Добавлено
+
+// Добавлено: новые элементы
+const greenCoinSprite = document.getElementById('greenCoinSprite');
+const shootSound = document.getElementById('shootSound');
 
 let tripleJump = false;
 const gravity = 0.5;
@@ -67,9 +69,11 @@ let gameOver = false;
 let fallingThroughPlatform = false;
 let cameraOffset = 0;
 
-let canShoot = false; // Добавлено
-let shootTimer = 0; // Добавлено
-let kopikCount = 0; // Добавлено
+// Добавлено: новые переменные
+let powerUps = [];
+let shootingEnabled = false;
+let shootingTimer = 0;
+let totalCoinsCollected = 0;
 
 const character = {
     x: 50,
@@ -91,7 +95,6 @@ const coins = [];
 const enemies = [];
 const projectiles = [];
 const floors = [];
-const kopiks = []; // Добавлено
 
 function resetGame() {
     character.x = 50;
@@ -101,21 +104,21 @@ function resetGame() {
     character.isAlive = true;
     gameSpeed = 4;
     score = 0;
+    totalCoinsCollected = 0; // Добавлено
     lives = 3;
     invincible = false;
     invincibleTime = 0;
     coinInvincible = false;
     coinInvincibleTime = 0;
-    canShoot = false; // Добавлено
-    shootTimer = 0; // Добавлено
-    kopikCount = 0; // Добавлено
+    shootingEnabled = false; // Добавлено
+    shootingTimer = 0; // Добавлено
     obstacles.length = 0;
     platforms.length = 0;
     coins.length = 0;
     enemies.length = 0;
     projectiles.length = 0;
+    powerUps.length = 0; // Добавлено
     floors.length = 0;
-    kopiks.length = 0; // Добавлено
     gameOver = false;
     doubleJump = false;
     tripleJump = false;
@@ -125,7 +128,7 @@ function resetGame() {
     generateCoins();
     generateEnemies();
     generateFloors();
-    generateKopiks(); // Добавлено
+    generatePowerUps(); // Добавлено
     gameLoop();
 }
 
@@ -177,11 +180,14 @@ function drawCoins() {
     ctx.restore();
 }
 
-function drawKopiks() { // Добавлено
+// Добавлено: функция отрисовки зелёных монеток
+function drawPowerUps() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
-    kopiks.forEach(kopik => {
-        ctx.drawImage(kopikSprite, kopik.x - kopik.radius, kopik.y - kopik.radius, kopik.radius * 2, kopik.radius * 2);
+    powerUps.forEach(powerUp => {
+        if (powerUp.type === 'greenCoin') {
+            ctx.drawImage(greenCoinSprite, powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        }
     });
     ctx.restore();
 }
@@ -193,17 +199,15 @@ function drawEnemies() {
         ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
     });
     ctx.restore();
-
-    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
 }
 
 function drawProjectiles() {
     ctx.save();
     ctx.translate(-cameraOffset, 0);
+    ctx.fillStyle = 'blue';
     projectiles.forEach(projectile => {
         ctx.beginPath();
         ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'red'; // Изменено на красный цвет для пули
         ctx.fill();
     });
     ctx.restore();
@@ -233,16 +237,6 @@ function updateCharacter() {
     character.dy += gravity;
     character.y += character.dy;
     character.x += character.dx;
-
-    // Удалены ограничения по горизонтали
-    /*
-    if (character.x < 0) {
-        character.x = 0;
-    }
-    if (character.x + character.width > canvas.width) {
-        character.x = canvas.width - character.width;
-    }
-    */
 
     if (character.y + character.height > canvas.height - 50) {
         character.y = canvas.height - 50 - character.height;
@@ -277,6 +271,13 @@ function updateCharacter() {
         }
     });
 
+    if (character.x < 0) {
+        character.x = 0;
+    }
+    if (character.x + character.width > canvas.width) {
+        character.x = canvas.width - character.width;
+    }
+
     if (character.dy === 0) {
         fallingThroughPlatform = false;
     }
@@ -300,6 +301,12 @@ function collectCoins() {
         if (isColliding(character, {x: coin.x - coin.radius, y: coin.y - coin.radius + coinOffset, width: coin.radius * 2.5, height: coin.radius * 2.5})) {
             coins.splice(index, 1);
             score += 10;
+            totalCoinsCollected += 1;
+
+            if (totalCoinsCollected >= 20) { // Добавлено
+                lives += 1;
+                totalCoinsCollected = 0;
+            }
 
             if (score % 100 === 0) {
                 coinInvincible = true;
@@ -307,41 +314,23 @@ function collectCoins() {
             }
         }
     });
-}
 
-function collectKopiks() { // Добавлено
-    kopiks.forEach((kopik, index) => {
-        if (isColliding(character, {x: kopik.x - kopik.radius, y: kopik.y - kopik.radius, width: kopik.radius * 2, height: kopik.radius * 2})) {
-            kopiks.splice(index, 1);
-            kopikCount += 1;
-
-            // Если собрано 20 копиков, добавляем жизнь
-            if (kopikCount >= 20) {
-                lives += 1;
-                kopikCount = 0; // Сбрасываем счетчик
+    powerUps.forEach((powerUp, index) => { // Добавлено
+        if (isColliding(character, powerUp)) {
+            if (powerUp.type === 'greenCoin') {
+                powerUps.splice(index, 1);
+                shootingEnabled = true;
+                shootingTimer = 600; // 10 секунд при 60 FPS
             }
-
-            // Активируем возможность стрельбы на 10 секунд
-            canShoot = true;
-            shootTimer = 600; // 10 секунд при 60 FPS
         }
     });
 }
 
 function hitEnemies() {
-    enemies.forEach((enemy, enemyIndex) => {
-        projectiles.forEach((projectile, projIndex) => {
-            if (isColliding(projectile, enemy)) {
-                enemies.splice(enemyIndex, 1);
-                projectiles.splice(projIndex, 1);
-                score += 20;
-                playSound(collisionSound);
-            }
-        });
-
+    enemies.forEach((enemy, index) => {
         if (isColliding(character, enemy)) {
             if (character.dy > 0) {
-                enemies.splice(enemyIndex, 1);
+                enemies.splice(index, 1);
                 score += 20;
                 character.dy = -10;
 
@@ -398,18 +387,6 @@ function generateObstacles() {
     }, obstacleInterval);
 }
 
-function generateKopiks() { // Добавлено
-    const kopikInterval = 7000; // Интервал появления копиков (каждые 7 секунд)
-    setInterval(() => {
-        const kopik = {
-            x: canvas.width + 1000, // Начальная позиция за пределами экрана
-            y: Math.random() * (canvas.height - 100) + 50, // Случайная вертикальная позиция
-            radius: 15
-        };
-        kopiks.push(kopik);
-    }, kopikInterval);
-}
-
 function drawHUD() {
     for (let i = 0; i < lives; i++) {
         ctx.drawImage(healthSprite, 40 + i * 40, 20, 45, 40);
@@ -423,24 +400,10 @@ function drawHUD() {
 }
 
 function generatePlatforms() {
-    let lastPlatformY = canvas.height - 460; // Начальная высота первой платформы
-
     function createPlatform() {
-        const isHigh = Math.random() < 0.5;
-        const platformY = isHigh ? canvas.height - 220 : canvas.height - 460;
-
-        // Проверка, чтобы платформа не накладывалась на предыдущую
-        if (Math.abs(platformY - lastPlatformY) < 50) {
-            // Если высоты слишком близки, изменяем случайным образом
-            const alternativeY = isHigh ? canvas.height - 460 : canvas.height - 220;
-            lastPlatformY = alternativeY;
-        } else {
-            lastPlatformY = platformY;
-        }
-
         const platform = {
             x: canvas.width + 1000, // Увеличен запас для появления объектов
-            y: lastPlatformY,
+            y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460,
             width: 100,
             height: 35,
             speed: gameSpeed
@@ -492,9 +455,24 @@ function generateFloors() {
     }
 }
 
+// Добавлено: функция генерации power-ups
+function generatePowerUps() {
+    const powerUpInterval = 10000; // Интервал генерации каждые 10 секунд
+    setInterval(() => {
+        const powerUp = {
+            x: canvas.width + 1000, // Позиция появления
+            y: Math.random() < 0.5 ? canvas.height - 200 : canvas.height - 460,
+            width: 30,
+            height: 30,
+            type: 'greenCoin' // Тип монетки
+        };
+        powerUps.push(powerUp);
+    }, powerUpInterval);
+}
+
 function generateProjectiles() {
     enemies.forEach(enemy => {
-        if (Math.random() < 0.005) {
+        if (Math.random() < 0.005) { // Уменьшен шанс для баланса
             const projectile = {
                 x: enemy.x,
                 y: enemy.y + enemy.height / 2,
@@ -504,18 +482,6 @@ function generateProjectiles() {
             projectiles.push(projectile);
         }
     });
-}
-
-function shootProjectile() { // Добавлено
-    const projectile = {
-        x: character.x + character.width,
-        y: character.y + character.height / 2,
-        radius: 5,
-        dx: 10, // Скорость пули вправо
-        dy: 0
-    };
-    projectiles.push(projectile);
-    playSound(shootSound); // Воспроизведение звука выстрела
 }
 
 function updateCoins() {
@@ -546,6 +512,17 @@ function updateEnemies() {
     });
 }
 
+function drawEnemies() {
+    ctx.save();
+    ctx.translate(-cameraOffset, 0);
+    enemies.forEach(enemy => {
+        ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
+    });
+    ctx.restore();
+
+    console.log('Drawing enemies:', enemies.length); // Временный лог для проверки
+}
+
 function isCollidingWithVirtualCollider(projectile, rect) {
     const collider = {
         x: rect.x + 10,
@@ -573,7 +550,7 @@ function isCollidingWithVirtualCollider(projectile, rect) {
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
-        if (projectile.x + projectile.radius < 0 || projectile.x - projectile.radius > canvas.width) { // Изменено условие
+        if (projectile.x + projectile.radius < 0) {
             projectiles.splice(index, 1);
         }
         if (isCollidingWithCharacter(projectile, character) && !invincible && !coinInvincible) {
@@ -634,25 +611,17 @@ function gameLoop() {
     drawObstacles();
     drawPlatforms();
     drawCoins();
-    drawKopiks(); // Добавлено
+    drawPowerUps(); // Добавлено
     drawEnemies();
     drawProjectiles();
     updateCharacter();
     collectCoins();
-    collectKopiks(); // Добавлено
     hitEnemies();
     updateCoins();
     updateEnemies();
     updateProjectiles();
-
-    // Обновляем состояние стрельбы
-    if (canShoot) {
-        shootTimer -= 1;
-        if (shootTimer <= 0) {
-            canShoot = false;
-        }
-    }
-
+    autoShoot(); // Добавлено
+    
     // Обновляем скорость игры
     updateGameSpeed();
 
@@ -668,12 +637,12 @@ function gameLoop() {
         coin.x -= gameSpeed;
     });
 
-    kopiks.forEach(kopik => { // Обновляем позицию копиков
-        kopik.x -= gameSpeed;
-    });
-
     enemies.forEach(enemy => {
         enemy.x -= gameSpeed;
+    });
+
+    powerUps.forEach(powerUp => { // Добавлено
+        powerUp.x -= gameSpeed;
     });
 
     floors.forEach(floor => {
@@ -700,10 +669,36 @@ function gameLoop() {
 
     drawHUD();
 
+    if (shootingEnabled && shootingTimer > 0) { // Добавлено
+        // Показываем таймер или индикацию активации
+        ctx.fillStyle = 'yellow';
+        ctx.font = '20px Arial';
+        ctx.fillText('Auto Shoot Active', 20, 100);
+    }
+
     if (character.isAlive) {
         requestAnimationFrame(gameLoop);
     } else {
         ctx.drawImage(gameOverSprite, canvas.width / 2 - 100, canvas.height / 2 - 50, 200, 100);
+    }
+}
+
+// Добавлено: функция автоматической стрельбы
+function autoShoot() {
+    if (shootingEnabled && shootingTimer > 0) {
+        // Создаём снаряд
+        const projectile = {
+            x: character.x + character.width,
+            y: character.y + character.height / 2,
+            radius: 5,
+            dx: 5
+        };
+        projectiles.push(projectile);
+        playSound(shootSound); // Убедитесь, что у вас есть звук выстрела
+        shootingTimer -= 1;
+        if (shootingTimer <= 0) {
+            shootingEnabled = false;
+        }
     }
 }
 
@@ -721,10 +716,10 @@ document.addEventListener('keydown', (e) => {
         resetGame();
     } else if (e.key === 's' || e.key === 'ы' || e.key === 'S' || e.key === 'Ы') {
         fallingThroughPlatform = true;
-    } 
-    // Обработка стрельбы
-    else if ((e.key === 'j' || e.key === 'ж') && canShoot) { // Добавлено
-        shootProjectile();
+    }
+    // Добавлено: обработка клавиши для стрельбы
+    else if (e.key === 'f' || e.key === 'Ф') {
+        shoot();
     }
 });
 
@@ -751,6 +746,18 @@ canvas.addEventListener('touchstart', (e) => {
 canvas.addEventListener('touchend', (e) => {
     character.dx = 0;
 });
+
+// Добавлено: функция для ручной стрельбы
+function shoot() {
+    const projectile = {
+        x: character.x + character.width,
+        y: character.y + character.height / 2,
+        radius: 5,
+        dx: 5
+    };
+    projectiles.push(projectile);
+    playSound(shootSound);
+}
 
 resetGame();
 
