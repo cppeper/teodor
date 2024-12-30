@@ -48,7 +48,6 @@ const collisionSound = document.getElementById('collisionSound');
 const healthSprite = document.getElementById('healthSprite');
 const expSprite = document.getElementById('expSprite');
 const kopikSprite = document.getElementById('kopikSprite'); // Добавлено
-
 const shootSound = document.getElementById('shootSound'); // Добавлено
 
 let tripleJump = false;
@@ -236,6 +235,14 @@ function updateCharacter() {
     character.x += character.dx;
 
     // Удалены ограничения по горизонтали
+    /*
+    if (character.x < 0) {
+        character.x = 0;
+    }
+    if (character.x + character.width > canvas.width) {
+        character.x = canvas.width - character.width;
+    }
+    */
 
     if (character.y + character.height > canvas.height - 50) {
         character.y = canvas.height - 50 - character.height;
@@ -269,8 +276,6 @@ function updateCharacter() {
             }
         }
     });
-
-    // Удалены ограничения по горизонтали
 
     if (character.dy === 0) {
         fallingThroughPlatform = false;
@@ -418,10 +423,24 @@ function drawHUD() {
 }
 
 function generatePlatforms() {
+    let lastPlatformY = canvas.height - 460; // Начальная высота первой платформы
+
     function createPlatform() {
+        const isHigh = Math.random() < 0.5;
+        const platformY = isHigh ? canvas.height - 220 : canvas.height - 460;
+
+        // Проверка, чтобы платформа не накладывалась на предыдущую
+        if (Math.abs(platformY - lastPlatformY) < 50) {
+            // Если высоты слишком близки, изменяем случайным образом
+            const alternativeY = isHigh ? canvas.height - 460 : canvas.height - 220;
+            lastPlatformY = alternativeY;
+        } else {
+            lastPlatformY = platformY;
+        }
+
         const platform = {
             x: canvas.width + 1000, // Увеличен запас для появления объектов
-            y: Math.random() < 0.1 ? canvas.height - 220 : canvas.height - 460,
+            y: lastPlatformY,
             width: 100,
             height: 35,
             speed: gameSpeed
@@ -554,7 +573,7 @@ function isCollidingWithVirtualCollider(projectile, rect) {
 function updateProjectiles() {
     projectiles.forEach((projectile, index) => {
         projectile.x += projectile.dx;
-        if (projectile.x + projectile.radius < 0 || projectile.x - projectile.radius > canvas.width) {
+        if (projectile.x + projectile.radius < 0 || projectile.x - projectile.radius > canvas.width) { // Изменено условие
             projectiles.splice(index, 1);
         }
         if (isCollidingWithCharacter(projectile, character) && !invincible && !coinInvincible) {
@@ -625,7 +644,7 @@ function gameLoop() {
     updateCoins();
     updateEnemies();
     updateProjectiles();
-    
+
     // Обновляем состояние стрельбы
     if (canShoot) {
         shootTimer -= 1;
@@ -704,7 +723,7 @@ document.addEventListener('keydown', (e) => {
         fallingThroughPlatform = true;
     } 
     // Обработка стрельбы
-    else if ((e.key === 'j' || e.key === 'ж') && canShoot) {
+    else if ((e.key === 'j' || e.key === 'ж') && canShoot) { // Добавлено
         shootProjectile();
     }
 });
